@@ -1,73 +1,73 @@
-"""
-Cálculo de horários disponíveis para agendamento público.
-
-Regra: dado um serviço (com sua duração) e uma data, gera os horários
-possíveis dentro do expediente da profissional naquele dia da semana,
-removendo os que colidem com agendamentos já confirmados ou bloqueios
-(TimeOff), e removendo horários que já passaram (se a data for hoje).
-"""
-from datetime import datetime, timedelta
-
+from datetime import datetime, timedelta, time
 from django.utils import timezone
+from .models import Appointment, WorkingHours, TimeOff
 
-from scheduling.models import Appointment, TimeOff, WorkingHours
-
-
-def get_available_slots(professional, service, target_date):
+def get_daily_availability(professional, date_obj, service_duration):
     """
-    Retorna uma lista de `datetime.time` com os horários de início
-    disponíveis para `service` na `target_date`, respeitando o expediente,
-    agendamentos existentes e bloqueios da `professional`.
+    Retorna os horários disponíveis.
+    Calcula a duração do serviço e identifica agendamentos 'encavalados' (pendentes).
     """
-    working_hours = WorkingHours.objects.filter(
-        professional=professional, weekday=target_date.weekday()
-    )
+    weekday = date_obj.weekday()
+    
+    # 1. Busca os horários de trabalho da profissional para este dia da semana
+    working_hours = WorkingHours.objects.filter(professional=professional, weekday=weekday)
     if not working_hours.exists():
         return []
 
-    duration = timedelta(minutes=service.duration_minutes)
-
-    busy_ranges = _busy_ranges(professional, target_date)
-
-    slots = []
-    for wh in working_hours:
-        window_start = timezone.make_aware(datetime.combine(target_date, wh.start_time))
-        window_end = timezone.make_aware(datetime.combine(target_date, wh.end_time))
-
-        cursor = window_start
-        while cursor + duration <= window_end:
-            slot_end = cursor + duration
-            if not _overlaps_any(cursor, slot_end, busy_ranges):
-                slots.append(cursor.time())
-            cursor += duration
-
-    if target_date == timezone.localdate():
-        now_time = timezone.localtime().time()
-        slots = [s for s in slots if s > now_time]
-
-    return slots
-
-
-def _busy_ranges(professional, target_date):
-    day_start = timezone.make_aware(datetime.combine(target_date, datetime.min.time()))
-    day_end = day_start + timedelta(days=1)
-
+    # 2. Busca TODOS os agendamentos do dia (do início ao fim)
+    start_of_day = timezone.make_aware(datetime.combine(date_obj, time.min))
+    end_of_day = timezone.make_aware(datetime.combine(date_obj, time.max))
+    
     appointments = Appointment.objects.filter(
         professional=professional,
-        start_datetime__lt=day_end,
-        end_datetime__gt=day_start,
-    ).exclude(status=Appointment.Status.CANCELLED)
-
-    time_offs = TimeOff.objects.filter(
-        professional=professional,
-        start_datetime__lt=day_end,
-        end_datetime__gt=day_start,
+        start_datetime__lt=end_of_day,
+        end_datetime__gt=start_of_day
     )
 
-    ranges = [(a.start_datetime, a.end_datetime) for a in appointments]
-    ranges += [(t.start_datetime, t.end_datetime) for t in time_offs]
-    return ranges
+    # Função interna para classificar cada bloco de horário
+    def check_slot_status(slot_start, slot_end):
+        slot_status = 'livre'
+        
+        for appt in appointments:
+            # Se houver intersecção (choque) entre o bloco gerado e o agendamento do banco
+            if appt.start_datetime < slot_end and appt.end_datetime > slot_start:
+                
+                # Se for um agendamento já aprovado, o horário tá morto. Ocupado de vez.
+                if appt.status == 'confirmado':
+                    return 'ocupado'  
+                
+                # Se for um agendamento na fila, libera o slot, mas com o alerta de encavalamento!
+                elif appt.status == 'aguardando_aprovacao':
+                    slot_status = 'conflito_pendente'
+                    
+        return slot_status
 
+    available_slots = []
+    
+    # 3. Gera os blocos de horário baseados no expediente da profissional
+    for wh in working_hours:
+        current_time = timezone.make_aware(datetime.combine(date_obj, wh.start_time))
+        end_time = timezone.make_aware(datetime.combine(date_obj, wh.end_time))
 
-def _overlaps_any(start, end, ranges):
-    return any(start < r_end and end > r_start for r_start, r_end in ranges)
+        # Roda o loop enquanto o serviço couber antes do fim do expediente
+        while current_time + timedelta(minutes=service_duration) <= end_time:
+            slot_end = current_time + timedelta(minutes=service_duration)
+            
+            # Bloqueio contra "viagem no tempo" (ignora horários no passado se for o dia de hoje)
+            if current_time < timezone.now():
+                current_time += timedelta(minutes=30) # Pulo padrão de 30 em 30 min
+                continue
+
+            status = check_slot_status(current_time, slot_end)
+            
+            # O Django SÓ manda pro React o que der pra clicar (livre ou com aviso)
+            if status != 'ocupado':
+                available_slots.append({
+                    "time": current_time.strftime("%H:%M"),
+                    "status": status # Devolve 'livre' ou 'conflito_pendente'
+                })
+
+            # Avança o relógio para gerar o próximo bloco (ex: de 30 em 30 minutos)
+            current_time += timedelta(minutes=30)
+
+    return available_slots

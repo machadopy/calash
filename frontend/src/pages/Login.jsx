@@ -1,9 +1,10 @@
-
+import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import api from '../services/api'
 import Layout from '../components/Layout'
 
 export default function Login() {
+  const navigate = useNavigate() // Navegador inicializado aqui
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -24,7 +25,9 @@ export default function Login() {
       localStorage.setItem('accessToken', access)
       localStorage.setItem('refreshToken', refresh)
 
-      alert("Login realizado com sucesso! 🎉")
+      // Redireciona direto pro painel sem piscar a tela
+      navigate('/dashboard') 
+      
     } catch (err) {
       console.error(err)
       setError("Falha no login. Verifique suas credenciais.")
