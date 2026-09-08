@@ -1,7 +1,28 @@
 from rest_framework import generics, permissions
+from rest_framework.permissions import BasePermission
 
-from scheduling.models import Appointment
-from scheduling.serializers import AppointmentSerializer
+from scheduling.models import Appointment, Service
+from scheduling.serializers import AppointmentSerializer, ServiceManagementSerializer
+
+
+class IsProfessional(BasePermission):
+    def has_permission(self, request, view):
+        return bool(
+            request.user.is_authenticated
+            and request.user.is_professional
+            and hasattr(request.user, "professional_profile")
+        )
+
+
+class ServiceListCreateView(generics.ListCreateAPIView):
+    serializer_class = ServiceManagementSerializer
+    permission_classes = [IsProfessional]
+
+    def get_queryset(self):
+        return Service.objects.filter(professional__user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(professional=self.request.user.professional_profile)
 
 
 class AppointmentListCreateView(generics.ListCreateAPIView):

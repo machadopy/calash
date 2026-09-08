@@ -13,6 +13,13 @@ class ServiceSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "description", "duration_minutes", "price"]
 
 
+class ServiceManagementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = ["id", "name", "description", "duration_minutes", "price", "is_active"]
+        read_only_fields = ["id", "is_active"]
+
+
 class ProfessionalPublicSerializer(serializers.ModelSerializer):
     services = serializers.SerializerMethodField()
 
