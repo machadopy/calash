@@ -1,8 +1,21 @@
+# Ambientes virtuais e cache do Python
 venv/
 __pycache__/
 *.pyc
+.pytest_cache/
+
+# Banco de dados local (SQLite)
 db.sqlite3
+lashapp-backend/db.sqlite3
+
+# Arquivos de ambiente e logs
 .env
 *.log
-.pytest_cache/
-staticfiles/
+
+# Front-end (Dependências e build)
+frontend/node_modules/
+frontend/dist/
+
+# Docker local
+.docker/
+docker/

@@ -1,39 +1,20 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: calash_db
-      POSTGRES_USER: calash_user
-      POSTGRES_PASSWORD: calash_pass
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
   backend:
-    build: ./backend
-    command: python manage.py runserver 0.0.0.0:8000
+    build: ./lashapp-backend
+    command: gunicorn lashapp.wsgi:application --bind 0.0.0.0:8000 --workers 3
     volumes:
-      - ./backend:/app
+      # Mapeia a pasta do backend para o container
+      - ./lashapp-backend:/app
+      # Esta linha é OBRIGATÓRIA para não perder os dados do banco a cada build
+      - ./lashapp-backend/db.sqlite3:/app/db.sqlite3
     ports:
       - "8000:8000"
-    environment:
-      - DATABASE_URL=postgres://calash_user:calash_pass@db:5432/calash_db
-    depends_on:
-      - db
 
   frontend:
     build: ./frontend
-    volumes:
-      - ./frontend:/app
-      # Evita sobrescrever a pasta node_modules do container
-      - /app/node_modules 
     ports:
-      - "5173:5173"
+      - "80:80"
     depends_on:
       - backend
-
-volumes:
-  postgres_data:
