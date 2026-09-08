@@ -1,5 +1,6 @@
 Django==6.1.1
 django-cors-headers==4.9.0
+whitenoise==6.9.0
 djangorestframework==3.18.0
 djangorestframework_simplejwt==5.5.1
 factory_boy==3.3.3

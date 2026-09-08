@@ -47,6 +47,15 @@ class TestPublicAgendaAPI:
         response = api_client.get(url)
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
+    def test_profissional_inativa_nao_aparece_na_agenda(self, api_client, professional):
+        professional.is_active = False
+        professional.save(update_fields=["is_active"])
+
+        url = reverse("scheduling-public:agenda-detail", kwargs={"slug": professional.slug})
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
     def test_disponibilidade_sem_login(self, api_client, professional):
         service = professional.services.first()
         WorkingHours.objects.create(
@@ -67,3 +76,34 @@ class TestPublicAgendaAPI:
         url = reverse("scheduling-public:agenda-availability", kwargs={"slug": professional.slug})
         response = api_client.get(url)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_disponibilidade_rejeita_data_no_passado(self, api_client, professional):
+        service = professional.services.first()
+        url = reverse("scheduling-public:agenda-availability", kwargs={"slug": professional.slug})
+
+        response = api_client.get(
+            url,
+            {
+                "date": (timezone.localdate() - timedelta(days=1)).isoformat(),
+                "service_id": service.id,
+            },
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_disponibilidade_rejeita_servico_de_outra_profissional(self, api_client, professional):
+        outra_user = User.objects.create_user(
+            email="outra-prof@example.com", password="senha123456", name="Outra", is_professional=True
+        )
+        outra = Professional.objects.create(user=outra_user, business_name="Outra Lash")
+        service = Service.objects.create(
+            professional=outra, name="Serviço externo", duration_minutes=60, price=100
+        )
+        target_date = timezone.localdate() + timedelta(days=7)
+        url = reverse("scheduling-public:agenda-availability", kwargs={"slug": professional.slug})
+
+        response = api_client.get(
+            url, {"date": target_date.isoformat(), "service_id": service.id}
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND

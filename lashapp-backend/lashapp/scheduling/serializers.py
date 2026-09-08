@@ -56,6 +56,16 @@ class AppointmentSerializer(serializers.ModelSerializer):
         if start_datetime and service:
             data['end_datetime'] = start_datetime + timedelta(minutes=service.duration_minutes)
 
+            has_conflict = Appointment.objects.filter(
+                professional_id=data['professional'].id,
+                start_datetime__lt=data['end_datetime'],
+                end_datetime__gt=start_datetime,
+            ).exclude(status=Appointment.Status.CANCELLED).exists()
+            if has_conflict:
+                raise serializers.ValidationError(
+                    {"start_datetime": "Já existe um agendamento nesse horário."}
+                )
+
         # Regras exclusivas para CLIENTES (A profissional escapa dessas restrições)
         if not user.is_professional:
             

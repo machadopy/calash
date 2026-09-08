@@ -2,6 +2,48 @@ from datetime import datetime, timedelta, time
 from django.utils import timezone
 from .models import Appointment, WorkingHours, TimeOff
 
+
+def get_available_slots(professional, service, date_obj):
+    """Retorna os horários de início livres para um serviço na data informada."""
+    weekday = date_obj.weekday()
+    now = timezone.now()
+    slots = []
+
+    day_start = timezone.make_aware(datetime.combine(date_obj, time.min))
+    day_end = timezone.make_aware(datetime.combine(date_obj, time.max))
+    appointments = Appointment.objects.filter(
+        professional=professional,
+        start_datetime__lt=day_end,
+        end_datetime__gt=day_start,
+    ).exclude(status=Appointment.Status.CANCELLED)
+    time_off = TimeOff.objects.filter(
+        professional=professional,
+        start_datetime__lt=day_end,
+        end_datetime__gt=day_start,
+    )
+
+    for working_hour in WorkingHours.objects.filter(
+        professional=professional, weekday=weekday
+    ):
+        current = datetime.combine(date_obj, working_hour.start_time)
+        end = datetime.combine(date_obj, working_hour.end_time)
+        while current + timedelta(minutes=service.duration_minutes) <= end:
+            slot_start = timezone.make_aware(current)
+            slot_end = slot_start + timedelta(minutes=service.duration_minutes)
+            blocked = any(
+                appointment.start_datetime < slot_end and appointment.end_datetime > slot_start
+                for appointment in appointments
+            ) or any(
+                blocked_period.start_datetime < slot_end
+                and blocked_period.end_datetime > slot_start
+                for blocked_period in time_off
+            )
+            if slot_start >= now and not blocked:
+                slots.append(slot_start.time())
+            current += timedelta(minutes=service.duration_minutes)
+
+    return slots
+
 def get_daily_availability(professional, date_obj, service_duration):
     """
     Retorna os horários disponíveis.
