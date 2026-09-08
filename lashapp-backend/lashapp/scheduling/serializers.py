@@ -41,9 +41,12 @@ from datetime import timedelta
 from .models import Appointment, Service
 
 class AppointmentSerializer(serializers.ModelSerializer):
+    client_name = serializers.CharField(source="client.name", read_only=True)
+    service_name = serializers.CharField(source="service.name", read_only=True)
+
     class Meta:
         model = Appointment
-        fields = ['id', 'professional', 'service', 'start_datetime', 'end_datetime', 'status', 'notes']
+        fields = ['id', 'professional', 'service', 'client_name', 'service_name', 'start_datetime', 'end_datetime', 'status', 'notes']
         # O cliente NUNCA pode enviar essas informações abaixo, o back-end que decide:
         read_only_fields = ['end_datetime', 'status', 'client']
 
