@@ -43,6 +43,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -107,6 +108,8 @@ USE_TZ = True
 # Static files
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompactManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -133,7 +136,7 @@ SIMPLE_JWT = {
 }
 
 
-# CORS (frontend React em dev)
+# CORS (frontend React em dev/produção)
 
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
@@ -142,14 +145,19 @@ CORS_ALLOWED_ORIGINS = config(
 )
 
 
+# CSRF (necessário para requisições POST/PUT vindas do domínio do frontend)
+
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='http://localhost:5173,http://127.0.0.1:5173',
+    cast=Csv(),
+)
+
+
 # Email (lembretes de agendamento)
 
-MAILERS = {
-    'default': {
-        'BACKEND': config(
-            'EMAIL_BACKEND',
-            default='django.core.mail.backends.console.EmailBackend',
-        ),
-    },
-}
+EMAIL_BACKEND = config(
+    'EMAIL_BACKEND',
+    default='django.core.mail.backends.console.EmailBackend',
+)
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='no-reply@lashapp.local')
