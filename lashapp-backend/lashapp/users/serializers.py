@@ -18,7 +18,11 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    professional_slug = serializers.CharField(
+        source="professional_profile.slug", read_only=True, allow_null=True
+    )
+
     class Meta:
         model = User
-        fields = ["id", "email", "name", "phone", "is_professional"]
+        fields = ["id", "email", "name", "phone", "is_professional", "professional_slug"]
         read_only_fields = ["id", "is_professional"]

@@ -6,7 +6,11 @@ from rest_framework.views import APIView
 from professionals.models import Professional
 from scheduling.availability import get_available_slots
 from scheduling.models import Service
-from scheduling.serializers import AvailabilityQuerySerializer, ProfessionalPublicSerializer
+from scheduling.serializers import (
+    AppointmentRequestSerializer,
+    AvailabilityQuerySerializer,
+    ProfessionalPublicSerializer,
+)
 
 
 class ProfessionalAgendaView(generics.RetrieveAPIView):
@@ -36,3 +40,17 @@ class AvailabilityView(APIView):
         slots = get_available_slots(professional, service, query.validated_data["date"])
 
         return Response({"slots": [s.strftime("%H:%M") for s in slots]})
+
+
+class PublicAppointmentCreateView(generics.CreateAPIView):
+    """Cria uma solicitação para a profissional identificada pelo slug."""
+
+    serializer_class = AppointmentRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["professional"] = get_object_or_404(
+            Professional, slug=self.kwargs["slug"], is_active=True
+        )
+        return context

@@ -84,6 +84,7 @@ class Appointment(models.Model):
     """Um agendamento de uma cliente com a profissional para um serviço."""
 
     class Status(models.TextChoices):
+        PENDING = "pending", "Aguardando aprovação"
         SCHEDULED = "scheduled", "Agendado"
         CANCELLED = "cancelled", "Cancelado"
         COMPLETED = "completed", "Concluído"
@@ -101,7 +102,7 @@ class Appointment(models.Model):
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField(blank=True)
     status = models.CharField(
-        max_length=20, choices=Status.choices, default=Status.SCHEDULED
+        max_length=20, choices=Status.choices, default=Status.PENDING
     )
     notes = models.TextField(blank=True)
 

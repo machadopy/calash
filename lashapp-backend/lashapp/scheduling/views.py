@@ -1,5 +1,8 @@
-from rest_framework import generics, permissions
+from django.shortcuts import get_object_or_404
+from rest_framework import generics, permissions, status
 from rest_framework.permissions import BasePermission
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from scheduling.models import Appointment, Service
 from scheduling.serializers import AppointmentSerializer, ServiceManagementSerializer
@@ -34,6 +37,14 @@ class AppointmentListCreateView(generics.ListCreateAPIView):
     serializer_class = AppointmentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def create(self, request, *args, **kwargs):
+        if request.user.is_professional:
+            return Response(
+                {"detail": "A profissional deve gerenciar solicitações pela agenda."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().create(request, *args, **kwargs)
+
     def get_queryset(self):
         queryset = Appointment.objects.select_related("client", "service")
 
@@ -50,14 +61,33 @@ class AppointmentListCreateView(generics.ListCreateAPIView):
 
 
 class AppointmentCancelView(generics.DestroyAPIView):
-    """Cancela (soft delete) um agendamento da própria cliente."""
+    """Cliente cancela o próprio agendamento ou profissional cancela o seu."""
 
     serializer_class = AppointmentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        if self.request.user.is_professional:
+            return Appointment.objects.filter(professional__user=self.request.user)
         return Appointment.objects.filter(client=self.request.user)
 
     def perform_destroy(self, instance):
         instance.status = Appointment.Status.CANCELLED
         instance.save(update_fields=["status", "updated_at"])
+
+
+class AppointmentApproveView(APIView):
+    permission_classes = [IsProfessional]
+
+    def patch(self, request, pk):
+        appointment = get_object_or_404(
+            Appointment, pk=pk, professional__user=request.user
+        )
+        if appointment.status != Appointment.Status.PENDING:
+            return Response(
+                {"detail": "Somente solicitações pendentes podem ser aprovadas."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        appointment.status = Appointment.Status.SCHEDULED
+        appointment.save(update_fields=["status", "updated_at"])
+        return Response(AppointmentSerializer(appointment).data)

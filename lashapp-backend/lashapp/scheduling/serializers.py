@@ -42,6 +42,42 @@ class AvailabilityQuerySerializer(serializers.Serializer):
         return attrs
 
 
+class AppointmentRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Appointment
+        fields = ["service", "start_datetime", "notes"]
+        read_only_fields = ["end_datetime", "status"]
+
+    def validate(self, data):
+        professional = self.context["professional"]
+        service = data["service"]
+        start_datetime = data["start_datetime"]
+
+        if service.professional_id != professional.id or not service.is_active:
+            raise serializers.ValidationError({"service": "Procedimento inválido para esta profissional."})
+        if start_datetime < timezone.now():
+            raise serializers.ValidationError({"start_datetime": "Não é possível agendar no passado."})
+        if start_datetime > timezone.now() + timedelta(days=30):
+            raise serializers.ValidationError({"start_datetime": "O agendamento deve ser feito com no máximo 30 dias de antecedência."})
+
+        end_datetime = start_datetime + timedelta(minutes=service.duration_minutes)
+        if Appointment.objects.filter(
+            professional=professional,
+            start_datetime__lt=end_datetime,
+            end_datetime__gt=start_datetime,
+        ).exclude(status=Appointment.Status.CANCELLED).exists():
+            raise serializers.ValidationError({"start_datetime": "Já existe um agendamento nesse horário."})
+        return data
+
+    def create(self, validated_data):
+        return Appointment.objects.create(
+            professional=self.context["professional"],
+            client=self.context["request"].user,
+            status=Appointment.Status.PENDING,
+            **validated_data,
+        )
+
+
 from rest_framework import serializers
 from django.utils import timezone
 from datetime import timedelta
@@ -61,6 +97,9 @@ class AppointmentSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         start_datetime = data.get('start_datetime')
         service = data.get('service')
+
+        if service and data.get('professional') and service.professional_id != data['professional'].id:
+            raise serializers.ValidationError({'service': 'O procedimento não pertence a esta profissional.'})
 
         # 1. Calcula o horário de término automaticamente com base na duração do serviço
         if start_datetime and service:
@@ -97,9 +136,9 @@ class AppointmentSerializer(serializers.ModelSerializer):
         # 4. Status Default
         if not user.is_professional:
             # Cliente agendando? Status travado em aguardando_aprovacao
-            validated_data['status'] = 'aguardando_aprovacao'
+            validated_data['status'] = Appointment.Status.PENDING
         else:
             # Profissional agendando? Ela pode passar o status que quiser, ou assume confirmado
-            validated_data['status'] = validated_data.get('status', 'confirmado')
+            validated_data['status'] = validated_data.get('status', Appointment.Status.SCHEDULED)
 
         return super().create(validated_data)
