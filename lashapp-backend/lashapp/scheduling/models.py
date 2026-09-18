@@ -28,6 +28,36 @@ class Service(models.Model):
         return f"{self.name} ({self.duration_minutes}min)"
 
 
+class Coupon(models.Model):
+    """Cupom de desconto criado por uma profissional."""
+
+    class DiscountType(models.TextChoices):
+        PERCENTAGE = "percentage", "Porcentagem"
+        FIXED = "fixed", "Valor fixo"
+
+    professional = models.ForeignKey(
+        "professionals.Professional", on_delete=models.CASCADE, related_name="coupons"
+    )
+    code = models.CharField(max_length=30)
+    discount_type = models.CharField(max_length=12, choices=DiscountType.choices)
+    discount_value = models.DecimalField(max_digits=8, decimal_places=2)
+    is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["code"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["professional", "code"], name="unique_coupon_code_per_professional"
+            )
+        ]
+
+    def __str__(self):
+        return self.code
+
+
 class WorkingHours(models.Model):
     """Janela recorrente de atendimento de uma profissional em um dia da semana."""
 
@@ -46,6 +76,9 @@ class WorkingHours(models.Model):
     weekday = models.IntegerField(choices=Weekday.choices)
     start_time = models.TimeField()
     end_time = models.TimeField()
+    lunch_start_time = models.TimeField(null=True, blank=True, default=None)
+    lunch_end_time = models.TimeField(null=True, blank=True, default=None)
+    slot_interval_minutes = models.PositiveIntegerField(default=60)
 
     class Meta:
         ordering = ["weekday", "start_time"]
@@ -57,6 +90,35 @@ class WorkingHours(models.Model):
     def clean(self):
         if self.start_time and self.end_time and self.start_time >= self.end_time:
             raise ValidationError("O horário final deve ser depois do horário inicial.")
+        if self.lunch_start_time and self.lunch_end_time:
+            if self.lunch_start_time >= self.lunch_end_time:
+                raise ValidationError("O fim do almoço deve ser depois do início.")
+            if self.lunch_start_time < self.start_time or self.lunch_end_time > self.end_time:
+                raise ValidationError("O almoço deve estar dentro do expediente.")
+        if self.slot_interval_minutes not in {30, 60, 90, 120}:
+            raise ValidationError("O intervalo deve ser de 30, 60, 90 ou 120 minutos.")
+
+
+class LunchBreak(models.Model):
+    """Almoço excepcional escolhido para uma data específica."""
+
+    professional = models.ForeignKey(
+        "professionals.Professional", on_delete=models.CASCADE, related_name="lunch_breaks"
+    )
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    is_enabled = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["professional", "date"], name="unique_lunch_break_per_day"
+            )
+        ]
+
+    def __str__(self):
+        return f"Almoço {self.date} {self.start_time}-{self.end_time}"
 
 
 class TimeOff(models.Model):
@@ -101,6 +163,10 @@ class Appointment(models.Model):
     )
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField(blank=True)
+    duration_minutes_override = models.PositiveIntegerField(null=True, blank=True)
+    additional_services = models.ManyToManyField(
+        Service, blank=True, related_name="additional_appointments"
+    )
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.PENDING
     )
@@ -118,9 +184,17 @@ class Appointment(models.Model):
     def save(self, *args, **kwargs):
         if not self.end_datetime and self.service_id and self.start_datetime:
             self.end_datetime = self.start_datetime + timedelta(
-                minutes=self.service.duration_minutes
+                minutes=self.total_duration_minutes
             )
         super().save(*args, **kwargs)
+
+    @property
+    def total_duration_minutes(self):
+        primary_duration = self.duration_minutes_override or self.service.duration_minutes
+        additional_duration = sum(
+            service.duration_minutes for service in self.additional_services.all()
+        ) if self.pk else 0
+        return primary_duration + additional_duration
 
     def clean(self):
         errors = {}

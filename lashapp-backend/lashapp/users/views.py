@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions
 from django.contrib.auth import get_user_model
 
-from users.serializers import RegisterSerializer, UserSerializer
+from users.serializers import ClientSerializer, RegisterSerializer, UserSerializer
 
 User = get_user_model()
 
@@ -22,3 +22,20 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class ClientListCreateView(generics.ListCreateAPIView):
+    serializer_class = ClientSerializer
+
+    def get_permissions(self):
+        return [permissions.IsAuthenticated()]
+
+    def get_queryset(self):
+        if not self.request.user.is_professional:
+            return User.objects.none()
+        return User.objects.filter(is_professional=False).order_by("name")
+
+    def perform_create(self, serializer):
+        if not self.request.user.is_professional:
+            raise permissions.PermissionDenied("Somente profissionais podem cadastrar clientes manuais.")
+        serializer.save()

@@ -1,6 +1,31 @@
 from datetime import datetime, timedelta, time
 from django.utils import timezone
-from .models import Appointment, WorkingHours, TimeOff
+from .models import Appointment, LunchBreak, WorkingHours, TimeOff
+
+
+def get_lunch_interval(professional, date_obj, appointments=None):
+    override = LunchBreak.objects.filter(professional=professional, date=date_obj).first()
+    if override:
+        if not override.is_enabled:
+            return None
+        return override.start_time, override.end_time
+
+    working_hour = WorkingHours.objects.filter(
+        professional=professional, weekday=date_obj.weekday()
+    ).first()
+    if not working_hour or not working_hour.lunch_start_time or not working_hour.lunch_end_time:
+        return None
+
+    lunch_start = timezone.make_aware(datetime.combine(date_obj, working_hour.lunch_start_time))
+    lunch_end = timezone.make_aware(datetime.combine(date_obj, working_hour.lunch_end_time))
+    appointments = appointments if appointments is not None else Appointment.objects.filter(
+        professional=professional,
+        start_datetime__lt=lunch_end,
+        end_datetime__gt=lunch_start,
+    ).exclude(status=Appointment.Status.CANCELLED)
+    if appointments.exists():
+        return None
+    return working_hour.lunch_start_time, working_hour.lunch_end_time
 
 
 def get_available_slots(professional, service, date_obj):
@@ -8,6 +33,7 @@ def get_available_slots(professional, service, date_obj):
     weekday = date_obj.weekday()
     now = timezone.now()
     slots = []
+    lunch_interval = get_lunch_interval(professional, date_obj)
 
     day_start = timezone.make_aware(datetime.combine(date_obj, time.min))
     day_end = timezone.make_aware(datetime.combine(date_obj, time.max))
@@ -30,6 +56,8 @@ def get_available_slots(professional, service, date_obj):
         while current + timedelta(minutes=service.duration_minutes) <= end:
             slot_start = timezone.make_aware(current)
             slot_end = slot_start + timedelta(minutes=service.duration_minutes)
+            lunch_start = timezone.make_aware(datetime.combine(date_obj, lunch_interval[0])) if lunch_interval else None
+            lunch_end = timezone.make_aware(datetime.combine(date_obj, lunch_interval[1])) if lunch_interval else None
             blocked = any(
                 appointment.start_datetime < slot_end and appointment.end_datetime > slot_start
                 for appointment in appointments
@@ -37,10 +65,10 @@ def get_available_slots(professional, service, date_obj):
                 blocked_period.start_datetime < slot_end
                 and blocked_period.end_datetime > slot_start
                 for blocked_period in time_off
-            )
+            ) or (lunch_start and lunch_end and slot_start < lunch_end and slot_end > lunch_start)
             if slot_start >= now and not blocked:
                 slots.append(slot_start.time())
-            current += timedelta(minutes=service.duration_minutes)
+            current += timedelta(minutes=working_hour.slot_interval_minutes)
 
     return slots
 
@@ -97,7 +125,7 @@ def get_daily_availability(professional, date_obj, service_duration):
             
             # Bloqueio contra "viagem no tempo" (ignora horários no passado se for o dia de hoje)
             if current_time < timezone.now():
-                current_time += timedelta(minutes=30) # Pulo padrão de 30 em 30 min
+                current_time += timedelta(minutes=wh.slot_interval_minutes)
                 continue
 
             status = check_slot_status(current_time, slot_end)
@@ -110,6 +138,6 @@ def get_daily_availability(professional, date_obj, service_duration):
                 })
 
             # Avança o relógio para gerar o próximo bloco (ex: de 30 em 30 minutos)
-            current_time += timedelta(minutes=30)
+            current_time += timedelta(minutes=wh.slot_interval_minutes)
 
     return available_slots
