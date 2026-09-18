@@ -105,13 +105,13 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files
-
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompactManifestStaticFilesStorage'
+# Static files
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 
 
 # Django REST Framework
