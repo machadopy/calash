@@ -57,6 +57,21 @@ class WorkingHoursView(APIView):
         )
         return Response(WorkingHoursSerializer(working_hours, many=True).data)
 
+    @transaction.atomic
+    def put(self, request):
+        serializer = WorkingHoursSerializer(data=request.data, many=True)
+        serializer.is_valid(raise_exception=True)
+
+        professional = request.user.professional_profile
+        WorkingHours.objects.filter(professional=professional).delete()
+        WorkingHours.objects.bulk_create([
+            WorkingHours(professional=professional, **item)
+            for item in serializer.validated_data
+        ])
+
+        working_hours = WorkingHours.objects.filter(professional=professional)
+        return Response(WorkingHoursSerializer(working_hours, many=True).data)
+
 
 class LunchBreakView(APIView):
     permission_classes = [IsProfessional]
@@ -108,21 +123,6 @@ class LunchBreakView(APIView):
             defaults={"start_time": "00:00", "end_time": "00:01", "is_enabled": False},
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-    @transaction.atomic
-    def put(self, request):
-        serializer = WorkingHoursSerializer(data=request.data, many=True)
-        serializer.is_valid(raise_exception=True)
-
-        professional = request.user.professional_profile
-        WorkingHours.objects.filter(professional=professional).delete()
-        WorkingHours.objects.bulk_create([
-            WorkingHours(professional=professional, **item)
-            for item in serializer.validated_data
-        ])
-
-        working_hours = WorkingHours.objects.filter(professional=professional)
-        return Response(WorkingHoursSerializer(working_hours, many=True).data)
 
 
 class AppointmentListCreateView(generics.ListCreateAPIView):
