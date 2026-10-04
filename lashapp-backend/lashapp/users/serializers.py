@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from users.emailing import send_verification_email
+from .emailing import send_verification_email
 
 logger = logging.getLogger(__name__)
 
