@@ -3,20 +3,10 @@ from django.contrib.auth.models import PermissionsMixin
 from django.db import models
 
 
-class CustomUserQuerySet(models.QuerySet):
-    def delete(self):
-        """Soft delete em massa: desativa os usuários ao invés de excluí-los (ex: ação do Admin)."""
-        return self.update(is_active=False)
-
-
 class CustomUserManager(BaseUserManager):
     """Manager que usa email (não username) como identificador de login."""
 
     use_in_migrations = True
-
-    def get_queryset(self):
-        # Garante que ações em lote (bulk) usem o QuerySet com o soft delete
-        return CustomUserQuerySet(self.model, using=self._db)
 
     def _create_user(self, email, password, **extra_fields):
         if not email:
@@ -78,12 +68,3 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
-
-    def delete(self, using=None, keep_parents=False):
-        """
-        Soft delete: Ao tentar apagar um usuário (seja no painel admin ou via código),
-        o banco não deleta o registro físico. Ele apenas altera o 'is_active' para False,
-        preservando todo o histórico de agendamentos e fichas da cliente.
-        """
-        self.is_active = False
-        self.save(using=using, update_fields=["is_active"])

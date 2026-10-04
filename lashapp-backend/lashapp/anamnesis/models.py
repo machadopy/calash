@@ -23,7 +23,11 @@ class Anamnesis(models.Model):
         related_name="anamnesis",
     )
     client = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="anamneses"
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL,  # <-- Alterado para não apagar a ficha quando o user for deletado
+        null=True,                  # <-- Permite valor nulo no banco
+        blank=True,                 # <-- Permite ficar em branco em formulários
+        related_name="anamneses"
     )
     professional = models.ForeignKey(
         "professionals.Professional", on_delete=models.CASCADE, related_name="anamneses"

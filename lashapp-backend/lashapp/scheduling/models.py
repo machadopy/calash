@@ -157,7 +157,7 @@ class Appointment(models.Model):
     )
     client = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,  # <-- Alterado para não apagar o agendamento quando o user for deletado
         related_name="appointments",
         null=True,
         blank=True,
@@ -184,7 +184,7 @@ class Appointment(models.Model):
         ordering = ["start_datetime"]
 
     def __str__(self):
-        client_name = self.manual_client_name or (self.client.name if self.client else "Cliente manual")
+        client_name = self.manual_client_name or (self.client.name if self.client else "Cliente manual/removido")
         return f"{client_name} - {self.service.name} em {self.start_datetime:%d/%m %H:%M}"
 
     def save(self, *args, **kwargs):
