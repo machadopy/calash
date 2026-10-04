@@ -144,14 +144,24 @@ class AppointmentRequestSerializer(serializers.ModelSerializer):
 
 
 class ProfessionalAppointmentSerializer(serializers.ModelSerializer):
-    client = serializers.PrimaryKeyRelatedField(queryset=get_user_model().objects.filter(is_professional=False))
+    client = serializers.PrimaryKeyRelatedField(
+        queryset=get_user_model().objects.filter(is_professional=False),
+        required=False,
+        allow_null=True,
+    )
+    client_name = serializers.CharField(
+        source="manual_client_name", required=False, allow_blank=True
+    )
 
     class Meta:
         model = Appointment
-        fields = ["client", "service", "start_datetime", "notes"]
+        fields = ["id", "client", "client_name", "service", "start_datetime", "notes"]
+        read_only_fields = ["id"]
 
     def validate(self, data):
         professional = self.context["request"].user.professional_profile
+        if not data.get("client") and not data.get("manual_client_name", "").strip():
+            raise serializers.ValidationError({"client": "Informe uma cliente cadastrada ou um nome manual."})
         if data["service"].professional_id != professional.id:
             raise serializers.ValidationError({"service": "Procedimento inválido para esta profissional."})
         if data["start_datetime"] < timezone.now():
@@ -162,9 +172,11 @@ class ProfessionalAppointmentSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        manual_client_name = validated_data.pop("manual_client_name", "").strip()
         return Appointment.objects.create(
             professional=self.context["request"].user.professional_profile,
             status=Appointment.Status.SCHEDULED,
+            manual_client_name=manual_client_name,
             **validated_data,
         )
 
@@ -181,7 +193,7 @@ from anamnesis.services import generate_anamnesis_pdf_safely
 class AppointmentSerializer(serializers.ModelSerializer):
     anamnesis = AnamnesisSerializer(write_only=True, required=False, allow_null=True)
     anamnesis_id = serializers.SerializerMethodField()
-    client_name = serializers.CharField(source="client.name", read_only=True)
+    client_name = serializers.SerializerMethodField()
     service_name = serializers.CharField(source="service.name", read_only=True)
     service_duration_minutes = serializers.SerializerMethodField()
     additional_service_ids = serializers.PrimaryKeyRelatedField(
@@ -196,6 +208,9 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     def get_service_duration_minutes(self, obj):
         return obj.total_duration_minutes
+
+    def get_client_name(self, obj):
+        return obj.manual_client_name or (obj.client.name if obj.client else "")
 
     def get_anamnesis_id(self, obj):
         try:

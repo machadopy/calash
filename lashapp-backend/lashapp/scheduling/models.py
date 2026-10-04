@@ -156,8 +156,13 @@ class Appointment(models.Model):
         "professionals.Professional", on_delete=models.CASCADE, related_name="appointments"
     )
     client = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="appointments"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="appointments",
+        null=True,
+        blank=True,
     )
+    manual_client_name = models.CharField(max_length=150, blank=True)
     service = models.ForeignKey(
         Service, on_delete=models.PROTECT, related_name="appointments"
     )
@@ -179,7 +184,8 @@ class Appointment(models.Model):
         ordering = ["start_datetime"]
 
     def __str__(self):
-        return f"{self.client.name} - {self.service.name} em {self.start_datetime:%d/%m %H:%M}"
+        client_name = self.manual_client_name or (self.client.name if self.client else "Cliente manual")
+        return f"{client_name} - {self.service.name} em {self.start_datetime:%d/%m %H:%M}"
 
     def save(self, *args, **kwargs):
         if not self.end_datetime and self.service_id and self.start_datetime:
