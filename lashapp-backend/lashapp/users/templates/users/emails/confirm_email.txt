@@ -1,6 +1,14 @@
-Olá, {{ user.name }}!
+{% autoescape off %}{% firstof user.first_name user.name as nome %}Olá{% if nome %}, {{ nome|truncatewords:1|cut:"…"|cut:" " }}{% endif %}!
 
-Confirme seu e-mail acessando:
+Que alegria ter você por aqui! Falta só um passinho para você poder escolher seu horário: confirmar que este e-mail é seu.
+Para confirmar, acesse o link abaixo:
+
 {{ link }}
 
-Este link é válido por 24 horas.
+O link vale por {{ validity }}.
+
+Se você não criou uma conta, é só ignorar este e-mail.
+
+Com carinho,
+Calash
+{% endautoescape %}
