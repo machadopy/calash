@@ -170,11 +170,17 @@ class ProfessionalAppointmentSerializer(serializers.ModelSerializer):
 
 
 from rest_framework import serializers
+from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
 from .models import Appointment, Service
+from anamnesis.serializers import AnamnesisSerializer
+from anamnesis.models import Anamnesis
+from anamnesis.services import generate_anamnesis_pdf_safely
 
 class AppointmentSerializer(serializers.ModelSerializer):
+    anamnesis = AnamnesisSerializer(write_only=True, required=False, allow_null=True)
+    anamnesis_id = serializers.SerializerMethodField()
     client_name = serializers.CharField(source="client.name", read_only=True)
     service_name = serializers.CharField(source="service.name", read_only=True)
     service_duration_minutes = serializers.SerializerMethodField()
@@ -184,12 +190,18 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Appointment
-        fields = ['id', 'professional', 'service', 'client_name', 'service_name', 'service_duration_minutes', 'additional_service_ids', 'start_datetime', 'end_datetime', 'status', 'notes']
+        fields = ['id', 'professional', 'service', 'client_name', 'service_name', 'service_duration_minutes', 'additional_service_ids', 'start_datetime', 'end_datetime', 'status', 'notes', 'anamnesis', 'anamnesis_id']
         # O cliente NUNCA pode enviar essas informações abaixo, o back-end que decide:
         read_only_fields = ['end_datetime', 'status', 'client']
 
     def get_service_duration_minutes(self, obj):
         return obj.total_duration_minutes
+
+    def get_anamnesis_id(self, obj):
+        try:
+            return obj.anamnesis.id
+        except Anamnesis.DoesNotExist:
+            return None
 
     def validate(self, data):
         user = self.context['request'].user
@@ -229,6 +241,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = self.context['request'].user
+        anamnesis_data = validated_data.pop("anamnesis", None)
         validated_data['client'] = user
 
         # 4. Status Default
@@ -239,7 +252,17 @@ class AppointmentSerializer(serializers.ModelSerializer):
             # Profissional agendando? Ela pode passar o status que quiser, ou assume confirmado
             validated_data['status'] = validated_data.get('status', Appointment.Status.SCHEDULED)
 
-        return super().create(validated_data)
+        with transaction.atomic():
+            appointment = super().create(validated_data)
+            if anamnesis_data:
+                anamnesis = Anamnesis.objects.create(
+                    appointment=appointment,
+                    client=user,
+                    professional=appointment.professional,
+                    **anamnesis_data,
+                )
+                generate_anamnesis_pdf_safely(anamnesis)
+        return appointment
 
 
 class AppointmentManagementSerializer(serializers.ModelSerializer):

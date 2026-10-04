@@ -1,6 +1,9 @@
+import base64
+import io
 from datetime import timedelta
 
 import pytest
+from PIL import Image, ImageDraw
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
@@ -45,6 +48,40 @@ def future_start():
     return (timezone.now() + timedelta(days=2)).replace(minute=0, second=0, microsecond=0)
 
 
+def anamnesis_payload():
+    image = Image.new("RGBA", (160, 60), (255, 255, 255, 0))
+    ImageDraw.Draw(image).line((10, 30, 150, 30), fill=(20, 20, 20, 255), width=5)
+    content = io.BytesIO()
+    image.save(content, format="PNG")
+    return {
+        "full_name": "Cliente Teste",
+        "birth_date": "1990-01-01",
+        "whatsapp": "41999999999",
+        "instagram": "@cliente",
+        "profession": "Designer",
+        "how_met": "Instagram",
+        "had_previous_extension": False,
+        "had_previous_extension_notes": "",
+        "has_allergies": False,
+        "has_allergies_notes": "",
+        "uses_contact_lenses": False,
+        "uses_contact_lenses_notes": "",
+        "has_eye_problems": False,
+        "has_eye_problems_notes": "",
+        "recent_eye_procedure": False,
+        "recent_eye_procedure_notes": "",
+        "thyroid_alopecia_hormonal": False,
+        "thyroid_alopecia_hormonal_notes": "",
+        "pregnant_or_treatment": False,
+        "pregnant_or_treatment_notes": "",
+        "pulls_lashes_or_sleeps_prone": False,
+        "pulls_lashes_or_sleeps_prone_notes": "",
+        "consent_accepted": True,
+        "signed_date": timezone.localdate().isoformat(),
+        "signature": "data:image/png;base64," + base64.b64encode(content.getvalue()).decode(),
+    }
+
+
 class TestAppointmentAPIRequerAuth:
     def test_criar_agendamento_sem_login_retorna_401(self, api_client, professional, service):
         url = reverse("scheduling:appointment-list")
@@ -76,6 +113,7 @@ class TestAppointmentAPIAutenticado:
                 "professional": professional.id,
                 "service": service.id,
                 "start_datetime": future_start().isoformat(),
+                "anamnesis": anamnesis_payload(),
             },
             format="json",
         )
@@ -174,6 +212,7 @@ class TestAppointmentAPIAutenticado:
                 "professional": professional.id,
                 "service": service.id,
                 "start_datetime": start.isoformat(),
+                "anamnesis": anamnesis_payload(),
             },
             format="json",
         )

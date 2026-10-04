@@ -41,6 +41,7 @@ LOCAL_APPS = [
     'users',
     'professionals',
     'scheduling',
+    'anamnesis',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -114,6 +115,8 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompactManifestStaticFilesStorage'
 # Static files
+
+PRIVATE_MEDIA_ROOT = Path(config('PRIVATE_MEDIA_ROOT', default=str(BASE_DIR.parent / 'private_media')))
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

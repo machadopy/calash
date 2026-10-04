@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page { size: A4; margin: 14mm 12mm; }
+    body { color: #3e332f; font-family: Arial, sans-serif; font-size: 10pt; }
+    h1 { margin: 0; text-align: center; font-size: 22pt; letter-spacing: .4pt; }
+    .subtitle { color: #86766f; text-align: center; font-size: 13pt; margin-bottom: 14mm; }
+    h2 { font-size: 14pt; margin: 8mm 0 4mm; }
+    .personal { display: grid; grid-template-columns: 1fr 1fr; gap: 7mm 10mm; }
+    .line { border-bottom: 1px solid #c8bfba; min-height: 7mm; }
+    .field-label { font-weight: bold; }
+    .question { margin: 4mm 0; }
+    .question-title { font-weight: bold; }
+    .checks { float: right; }
+    .notes { border-bottom: 1px solid #c8bfba; min-height: 5mm; margin-top: 2mm; }
+    .term { line-height: 1.35; text-align: justify; }
+    .signature { margin: 10mm auto 0; width: 55%; text-align: center; }
+    .signature img { display: block; height: 20mm; max-width: 100%; margin: 0 auto -2mm; }
+    .signature-line { border-bottom: 1px solid #3e332f; }
+    .date { margin-top: 7mm; text-align: center; }
+    table { width: 100%; border-collapse: collapse; margin-top: 3mm; }
+    td { border: 1px solid #c8bfba; padding: 4mm 3mm; }
+    td.label { font-weight: bold; width: 16%; }
+  </style>
+</head>
+<body>
+  <h1>FICHA DE ANAMNESE</h1>
+  <div class="subtitle">EXTENSÃO DE CÍLIOS &amp; DESIGN DO OLHAR</div>
+
+  <h2>1. DADOS PESSOAIS</h2>
+  <div class="personal">
+    <div><span class="field-label">Nome Completo:</span><div class="line">{{ anamnesis.full_name }}</div></div>
+    <div><span class="field-label">Data Nasc.:</span><div class="line">{{ anamnesis.birth_date|date:"d/m/Y" }}</div></div>
+    <div><span class="field-label">WhatsApp:</span><div class="line">{{ anamnesis.whatsapp }}</div></div>
+    <div><span class="field-label">Instagram:</span><div class="line">{{ anamnesis.instagram }}</div></div>
+    <div><span class="field-label">Profissão:</span><div class="line">{{ anamnesis.profession }}</div></div>
+    <div><span class="field-label">Como nos conheceu?</span><div class="line">{{ anamnesis.how_met }}</div></div>
+  </div>
+
+  <h2>2. QUESTIONÁRIO DE SAÚDE &amp; HISTÓRICO OCULAR</h2>
+  {% for question in questions %}
+  <div class="question"><span class="question-title">{{ forloop.counter }}. {{ question.text }}</span><span class="checks">[ {% if question.answer %}X{% endif %} ] Sim &nbsp; [ {% if not question.answer %}X{% endif %} ] Não</span><div>Observações: <span class="notes">{{ question.notes }}</span></div></div>
+  {% endfor %}
+
+  <h2>3. TERMO DE RESPONSABILIDADE E CONSENTIMENTO</h2>
+  <p class="term">Estou ciente de que o procedimento de extensão de cílios requer cuidados específicos após a aplicação (não molhar nas primeiras horas, não usar rímel à prova d'água, não esfregar os olhos e pentear diariamente). Declaro que todas as informações prestadas acima são verdadeiras e omitir qualquer dado é de minha total responsabilidade. Autorizo a realização do procedimento, bem como o registro fotográfico dos meus olhos para acompanhamento técnico e divulgação profissional.</p>
+  <div class="signature"><img src="{{ signature_uri }}" alt="Assinatura"><div class="signature-line"></div>Assinatura da Cliente</div>
+  <div class="date">Data: {{ anamnesis.signed_date|date:"d/m/Y" }}</div>
+
+  <h2>4. REGISTRO TÉCNICO (Uso Exclusivo da Profissional)</h2>
+  <table>
+    <tr><td class="label">Data do Proc.:</td><td>{{ anamnesis.procedure_date|date:"d/m/Y" }}</td><td class="label">Técnica:</td><td>[ {% if anamnesis.technique == 'fio_a_fio' %}X{% endif %} ] Fio a Fio &nbsp; [ {% if anamnesis.technique == 'volume_russo' %}X{% endif %} ] Vol. Russo &nbsp; [ {% if anamnesis.technique == 'hibrido' %}X{% endif %} ] Híbrido</td></tr>
+    <tr><td class="label">Curvatura:</td><td>{{ anamnesis.curvature }}</td><td class="label">Espessura:</td><td>{{ anamnesis.thickness }}</td></tr>
+    <tr><td class="label">Adesivo (Cola):</td><td>{{ anamnesis.adhesive }}</td><td class="label">Mapping utilizado:</td><td>[ {% if anamnesis.mapping == 'gatinho' %}X{% endif %} ] Gatinho &nbsp; [ {% if anamnesis.mapping == 'boneca' %}X{% endif %} ] Boneca &nbsp; [ {% if anamnesis.mapping == 'esquilo' %}X{% endif %} ] Esquilo</td></tr>
+  </table>
+</body>
+</html>

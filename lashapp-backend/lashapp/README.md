@@ -25,6 +25,19 @@ python manage.py createsuperuser   # cria a conta da lash designer (marque is_pr
 python manage.py runserver
 ```
 
+### Anamnese e PDF privado
+
+O agendamento de cliente exige o objeto `anamnesis` e gera a ficha em PDF. Assinaturas e PDFs ficam em `PRIVATE_MEDIA_ROOT`, que deve apontar para um diretório fora do `MEDIA_ROOT` público. Em produção, defina essa variável no `.env` com um caminho persistente e sem exposição pelo Nginx.
+
+Para Ubuntu (incluindo a VM da Oracle), instale as bibliotecas nativas usadas pelo WeasyPrint antes de instalar o `requirements.txt`:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libffi-dev shared-mime-info
+```
+
+Em Windows, o WeasyPrint também precisa das DLLs GTK/Pango disponíveis no `PATH`; sem elas o backend continua iniciando, mas registra a falha e deixa o PDF pendente para regeneração pelo admin.
+
 Rodar os testes:
 
 ```bash
