@@ -64,6 +64,7 @@ def professional():
 @pytest.fixture
 def client_user():
     return User.objects.create_user(
+        is_email_verified=True,
         email="cliente@example.com", password="senha123456", name="Cliente Teste"
     )
 
@@ -88,15 +89,15 @@ def appointment_payload(professional, service, **anamnesis_changes):
     }
 
 
-def test_agendamento_sem_anamnesis_e_recusado(api_client, professional, service, client_user):
+def test_agendamento_sem_anamnesis_e_permitido(api_client, professional, service, client_user):
     api_client.force_authenticate(user=client_user)
     payload = appointment_payload(professional, service)
     payload.pop("anamnesis")
 
     response = api_client.post(reverse("scheduling:appointment-list"), payload, format="json")
 
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert not Appointment.objects.exists()
+    assert response.status_code == status.HTTP_201_CREATED
+    assert Appointment.objects.filter(client=client_user).exists()
 
 
 def test_agendamento_e_ficha_sao_criados_atomicamente(
@@ -189,6 +190,7 @@ def test_cliente_nao_acessa_prefill_de_outra_cliente(
     api_client, professional, service, client_user, monkeypatch
 ):
     outra_cliente = User.objects.create_user(
+        is_email_verified=True,
         email="outra@example.com", password="senha123456", name="Outra"
     )
     monkeypatch.setattr("scheduling.serializers.generate_anamnesis_pdf_safely", lambda _: None)

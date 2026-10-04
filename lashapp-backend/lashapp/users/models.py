@@ -49,6 +49,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         default=False,
         help_text="True quando este usuário é uma profissional (lash designer).",
     )
+    is_email_verified = models.BooleanField(default=False)
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

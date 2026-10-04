@@ -1,0 +1,6 @@
+Olá, {{ user.name }}!
+
+Confirme seu e-mail acessando:
+{{ link }}
+
+Este link é válido por 24 horas.

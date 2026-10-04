@@ -1,7 +1,12 @@
+import logging
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from django.utils.crypto import get_random_string
 from rest_framework import serializers
+
+from users.emailing import send_verification_email
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -28,7 +33,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def create(self, validated_data):
-        return User.objects.create_user(**validated_data)
+        user = User.objects.create_user(**validated_data)
+        try:
+            send_verification_email(user)
+        except Exception:
+            logger.exception("Falha ao enviar confirmação de e-mail para %s", user.email)
+        return user
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -38,5 +48,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "email", "name", "phone", "is_professional", "is_superuser", "professional_slug"]
+        fields = [
+            "id", "email", "name", "phone", "is_professional", "is_superuser",
+            "is_email_verified", "professional_slug",
+        ]
         read_only_fields = ["id", "is_professional", "is_superuser"]

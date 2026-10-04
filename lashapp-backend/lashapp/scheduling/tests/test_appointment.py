@@ -23,6 +23,7 @@ def professional():
 @pytest.fixture
 def client_user():
     return User.objects.create_user(
+        is_email_verified=True,
         email="cliente@example.com", password="senha123456", name="Cliente Teste"
     )
 

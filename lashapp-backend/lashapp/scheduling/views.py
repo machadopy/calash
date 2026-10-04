@@ -135,6 +135,19 @@ class AppointmentListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
+        if (
+            not request.user.is_professional
+            and not request.user.is_staff
+            and not request.user.is_superuser
+            and not request.user.is_email_verified
+        ):
+            return Response(
+                {
+                    "code": "email_not_verified",
+                    "detail": "Confirme seu e-mail para agendar.",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
         return super().create(request, *args, **kwargs)
 
     def get_serializer_class(self):

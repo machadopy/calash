@@ -40,6 +40,7 @@ def service(professional):
 @pytest.fixture
 def client_user():
     return User.objects.create_user(
+        is_email_verified=True,
         email="cliente@example.com", password="senha123456", name="Cliente Teste"
     )
 
@@ -125,6 +126,7 @@ class TestAppointmentAPIAutenticado:
         self, api_client, professional, service, client_user
     ):
         outra_cliente = User.objects.create_user(
+            is_email_verified=True,
             email="outra@example.com", password="senha123456", name="Outra"
         )
         start = future_start()
@@ -175,6 +177,7 @@ class TestAppointmentAPIAutenticado:
         self, api_client, professional, service, client_user
     ):
         outra_cliente = User.objects.create_user(
+            is_email_verified=True,
             email="outra2@example.com", password="senha123456", name="Outra2"
         )
         start = future_start()

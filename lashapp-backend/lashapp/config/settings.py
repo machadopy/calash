@@ -134,6 +134,9 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
     'TEST_REQUEST_DEFAULT_FORMAT': 'json',
+    'DEFAULT_THROTTLE_RATES': {
+        'auth_email': '5/hour',
+    },
 }
 
 SIMPLE_JWT = {
@@ -169,3 +172,10 @@ EMAIL_BACKEND = config(
     default='django.core.mail.backends.console.EmailBackend',
 )
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='no-reply@lashapp.local')
+EMAIL_HOST = config('EMAIL_HOST', default='localhost')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+PASSWORD_RESET_TIMEOUT = 3600
