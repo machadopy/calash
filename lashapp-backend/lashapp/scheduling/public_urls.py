@@ -6,11 +6,13 @@ from scheduling.public_views import (
     PublicScheduleView,
     ProfessionalAgendaView,
     PublicAppointmentCreateView,
+    SupportContactView,
 )
 
 app_name = "scheduling-public"
 
 urlpatterns = [
+    path("support/", SupportContactView.as_view(), name="support-contact"),
     path("<slug:slug>/", ProfessionalAgendaView.as_view(), name="agenda-detail"),
     path("<slug:slug>/availability/", AvailabilityView.as_view(), name="agenda-availability"),
     path("<slug:slug>/working-hours/", PublicWorkingHoursView.as_view(), name="agenda-working-hours"),

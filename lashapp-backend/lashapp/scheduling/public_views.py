@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions
 from rest_framework.response import Response
@@ -24,6 +25,19 @@ class ProfessionalAgendaView(generics.RetrieveAPIView):
     permission_classes = [permissions.AllowAny]
     lookup_field = "slug"
     queryset = Professional.objects.filter(is_active=True)
+
+
+class SupportContactView(APIView):
+    """Dados públicos de contato usados pelo botão de suporte."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        number = "".join(filter(str.isdigit, settings.SUPPORT_WHATSAPP_NUMBER))
+        return Response({
+            "whatsapp_number": number,
+            "whatsapp_url": f"https://wa.me/{number}" if number else None,
+        })
 
 
 class AvailabilityView(APIView):
