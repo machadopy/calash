@@ -31,6 +31,19 @@ def professional():
     return prof
 
 
+class TestPublicSupportAPI:
+    def test_contato_whatsapp_disponivel_sem_login(self, api_client, settings):
+        settings.SUPPORT_WHATSAPP_NUMBER = "55 (41) 98454-1254"
+
+        response = api_client.get(reverse("scheduling-public:support-contact"))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data == {
+            "whatsapp_number": "5541984541254",
+            "whatsapp_url": "https://wa.me/5541984541254",
+        }
+
+
 class TestPublicAgendaAPI:
     def test_qualquer_pessoa_ve_perfil_e_servicos_sem_login(self, api_client, professional):
         url = reverse("scheduling-public:agenda-detail", kwargs={"slug": professional.slug})
