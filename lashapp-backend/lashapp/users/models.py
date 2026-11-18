@@ -1,6 +1,7 @@
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.db import models
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 
 class CustomUserManager(BaseUserManager):
@@ -50,6 +51,12 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         help_text="True quando este usuário é uma profissional (lash designer).",
     )
     is_email_verified = models.BooleanField(default=False)
+
+    high_contrast = models.BooleanField(default=False)
+    font_scale = models.IntegerField(
+        default=100,
+        validators=[MinValueValidator(100), MaxValueValidator(150)],
+    )
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

@@ -15,7 +15,12 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from users.serializers import ClientSerializer, RegisterSerializer, UserSerializer
+from users.serializers import (
+    AccessibilitySerializer,
+    ClientSerializer,
+    RegisterSerializer,
+    UserSerializer,
+)
 from users.emailing import VERIFICATION_SALT, send_password_reset_email, send_verification_email
 
 User = get_user_model()
@@ -142,6 +147,16 @@ class MeView(generics.RetrieveUpdateAPIView):
     """Dados da usuária autenticada."""
 
     serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+
+class AccessibilityView(generics.RetrieveUpdateAPIView):
+    """Lê e atualiza as preferências de acessibilidade do usuário autenticado."""
+
+    serializer_class = AccessibilitySerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):

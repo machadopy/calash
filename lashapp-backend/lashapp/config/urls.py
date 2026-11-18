@@ -1,9 +1,12 @@
 from django.contrib import admin
 from django.urls import include, path
 
+from users.views import AccessibilityView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('users.urls')),
+    path('api/users/me/accessibility/', AccessibilityView.as_view(), name='accessibility'),
     path('api/public/', include('scheduling.public_urls')),
     path('api/appointments/', include('scheduling.urls')),
     path('api/services/', include('scheduling.service_urls')),

@@ -12,6 +12,12 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
+class AccessibilitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["high_contrast", "font_scale"]
+
+
 class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
